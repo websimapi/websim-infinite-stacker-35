@@ -24,6 +24,7 @@ export class UIManager {
 
         this.currentReplayBlob = null;
         this.streakTimeout = null;
+        this.submitStatusInterval = null;
         this.currentPage = 0;
         this.itemsPerPage = 10;
         this.allScores = [];
@@ -78,7 +79,7 @@ export class UIManager {
         this.finalScoreElement.innerText = score;
         this.gameOverElement.classList.remove('hidden');
         this.replayControlsElement.classList.remove('hidden');
-        this.setSubmitStatus('Checking score...', 'white');
+        this.setSubmitStatus('Submitting score', 'white');
         this.currentReplayBlob = null; // Reset blob on new game over screen
     }
 
@@ -142,9 +143,25 @@ export class UIManager {
     }
 
     setSubmitStatus(text, color = 'white') {
+        if (this.submitStatusInterval) {
+            clearInterval(this.submitStatusInterval);
+            this.submitStatusInterval = null;
+        }
+
         if (this.submitStatusElement) {
             this.submitStatusElement.textContent = text;
             this.submitStatusElement.style.color = color;
+
+            if (text.startsWith('Submitting score')) {
+                let dots = 0;
+                const baseText = 'Submitting score';
+                this.submitStatusElement.textContent = baseText; // Set initial text
+
+                this.submitStatusInterval = setInterval(() => {
+                    dots = (dots + 1) % 4;
+                    this.submitStatusElement.textContent = baseText + '.'.repeat(dots);
+                }, 500);
+            }
         }
     }
 
