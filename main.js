@@ -14,6 +14,7 @@ let scene, world, camera, renderer, uiScene, uiCamera, sky;
 let skyScene, skyCamera;
 let pendingSubmissions = []; // Track background submissions
 let currentUser = null;
+let currentUserHighScore = null;
 
 const room = new WebsimSocket();
 const LEADERBOARD_MAX_SIZE = 1000;
@@ -49,6 +50,11 @@ async function init() {
 
     window.websim.getCurrentUser().then(user => {
         currentUser = user;
+        if (user) {
+            const scores = room.collection('score_v1').getList();
+            const userScores = scores.filter(score => score.username === user.username);
+            currentUserHighScore = userScores.sort((a, b) => b.score - a.score)[0] || null;
+        }
         syncLocalScores();
     });
 
@@ -86,6 +92,11 @@ async function init() {
         ui.updateLeaderboard(sortedScores, (replayUrl) => {
             ui.showReplayViewer(replayUrl);
         });
+
+        if (currentUser) {
+            const userScores = scores.filter(score => score.username === currentUser.username);
+            currentUserHighScore = userScores.sort((a, b) => b.score - a.score)[0] || null;
+        }
     });
 
     renderer.setAnimationLoop(animate);
@@ -174,12 +185,13 @@ async function autoSubmitScore(replayBlob, scoreToSubmit, hasReplay, localTempId
                 }
             }
 
-            const userScores = allScores.filter(score => score.username === userForSubmission.username);
-            const userHighScoreRecord = userScores.sort((a, b) => b.score - a.score)[0] || null;
+            const userHighScoreRecord = currentUserHighScore;
 
             // Clean up duplicate scores if they exist
+            const userScores = allScores.filter(score => score.username === userForSubmission.username);
             if (userScores.length > 1) {
-                const scoresToDelete = userScores.slice(1);
+                const highestScore = userScores.sort((a, b) => b.score - a.score)[0];
+                const scoresToDelete = userScores.filter(s => s.id !== highestScore.id);
                 for (const scoreRecord of scoresToDelete) {
                     console.log(`Cleaning up old score for ${userForSubmission.username}: ${scoreRecord.score}`);
                     room.collection('score_v1').delete(scoreRecord.id);
